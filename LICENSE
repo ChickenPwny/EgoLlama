@@ -1,160 +1,293 @@
-EgoLlama Gateway - Non-Commercial Developer License
-====================================================
+EgoLlama Gateway Dual License
+=============================
 
 Copyright (c) 2024 EgoLlama Contributors
 
+This project is offered under a dual-licensing model:
+
+1. **Community Edition** – Licensed under the Apache License, Version 2.0.
+   This is intended for open-source, academic, and community-driven use.
+
+2. **Commercial Edition** – Licensed under the Business Source License 1.1 (BSL 1.1).
+   This governs production and commercial deployments as described below.
+
+You may choose the license that best fits your intended use. Using, copying,
+modifying, or distributing the software indicates your acceptance of the
+applicable terms.
+
+------------------------------------------------------------------------------
+
+Section A. Apache License, Version 2.0
+--------------------------------------
+
+Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
+
 TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-1. DEFINITIONS
+1. Definitions.
 
-   "License" shall mean the terms and conditions for use, reproduction,
-   and distribution as defined by this document.
+"License" shall mean the terms and conditions for use, reproduction, and
+distribution as defined by Sections 1 through 9 of this document.
 
-   "Licensor" shall mean the copyright owner or entity authorized by
-   the copyright owner that is granting the License.
+"Licensor" shall mean the copyright owner or entity authorized by the copyright
+owner that is granting the License.
 
-   "You" (or "Your") shall mean an individual or Legal Entity exercising
-   permissions granted by this License.
+"Legal Entity" shall mean the union of the acting entity and all other entities
+that control, are controlled by, or are under common control with that entity.
+For the purposes of this definition, "control" means (i) the power, direct or
+indirect, to cause the direction or management of such entity, whether by
+contract or otherwise, or (ii) ownership of fifty percent (50%) or more of the
+outstanding shares, or (iii) beneficial ownership of such entity.
 
-   "Source Code" shall mean the preferred form for making modifications,
-   including but not limited to software source code, documentation
-   source, and configuration files.
+"You" (or "Your") shall mean an individual or Legal Entity exercising
+permissions granted by this License.
 
-   "Commercial Use" shall mean any use of the Software that is intended
-   for or results in commercial advantage or private monetary compensation,
-   including but not limited to:
-   - Selling or licensing the Software
-   - Using the Software to provide services for which You charge a fee
-   - Using the Software in a commercial product or service
-   - Using the Software for profit-generating activities
-   - Using the Software by a for-profit company or organization
-   - Distributing the Software as part of a commercial offering
+"Source" form shall mean the preferred form for making modifications, including
+but not limited to software source code, documentation source, and configuration
+files.
 
-2. GRANT OF LICENSE
+"Object" form shall mean any form resulting from mechanical transformation or
+translation of a Source form, including but not limited to compiled object code,
+generated documentation, and conversions to other media types.
 
-   Subject to the terms and conditions of this License, each Contributor
-   hereby grants to You a non-exclusive, worldwide, non-transferable,
-   non-sublicensable, royalty-free license to use, copy, modify, merge,
-   publish, and distribute the Software, subject to the following
-   restrictions:
+"Work" shall mean the work of authorship, whether in Source or Object form,
+made available under the License, as indicated by a copyright notice that is
+included in or attached to the work (an example is provided in the Appendix
+below).
 
-   a) NON-COMMERCIAL USE ONLY
-      You may use the Software only for non-commercial purposes.
-      Commercial use is strictly prohibited without explicit written
-      permission from the Licensor.
+"Derivative Works" shall mean any work, whether in Source or Object form, that
+is based on (or derived from) the Work and for which the editorial revisions,
+annotations, elaborations, or other modifications represent, as a whole, an
+original work of authorship. For the purposes of this License, Derivative Works
+shall not include works that remain separable from, or merely link (or bind by
+name) to the interfaces of, the Work and Derivative Works thereof.
 
-   b) DEVELOPER USE
-      Individual developers and non-profit organizations may use,
-      modify, and distribute the Software freely for:
-      - Personal projects
-      - Educational purposes
-      - Non-profit research
-      - Open source projects (non-commercial)
-      - Development and testing
+"Contribution" shall mean any work of authorship, including the original version
+of the Work and any modifications or additions to that Work or Derivative Works
+thereof, that is intentionally submitted to Licensor for inclusion in the Work
+by the copyright owner or by an individual or Legal Entity authorized to submit
+on behalf of the copyright owner. For the purposes of this definition,
+"submitted" means any form of electronic, verbal, or written communication sent
+to the Licensor or its representatives, including but not limited to
+communication on electronic mailing lists, source code control systems, and
+issue tracking systems that are managed by, or on behalf of, the Licensor for
+the purpose of discussing and improving the Work, but excluding communication
+that is conspicuously marked or otherwise designated in writing by the copyright
+owner as "Not a Contribution."
 
-   c) NO COMMERCIAL DISTRIBUTION
-      You may not sell, rent, lease, or otherwise commercially distribute
-      the Software or any derivative works.
+"Contributor" shall mean Licensor and any individual or Legal Entity on behalf
+of whom a Contribution has been received by Licensor and subsequently
+incorporated within the Work.
 
-   d) NO PROFIT FROM USE
-      You may not use the Software to generate revenue, profit, or
-      commercial advantage without explicit written permission from
-      the Licensor.
+2. Grant of Copyright License. Subject to the terms and conditions of this
+License, each Contributor hereby grants to You a perpetual, worldwide,
+non-exclusive, no-charge, royalty-free, irrevocable copyright license to
+reproduce, prepare Derivative Works of, publicly display, publicly perform,
+sublicense, and distribute the Work and such Derivative Works in Source or
+Object form.
 
-3. RESTRICTIONS
+3. Grant of Patent License. Subject to the terms and conditions of this License,
+each Contributor hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section) patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer the Work, where such license applies only to those patent claims
+licensable by such Contributor that are necessarily infringed by their
+Contribution(s) alone or by combination of their Contribution(s) with the Work
+to which such Contribution(s) was submitted. If You institute patent litigation
+against any entity (including a cross-claim or counterclaim in a lawsuit)
+alleging that the Work or a Contribution incorporated within the Work
+constitutes direct or contributory patent infringement, then any patent licenses
+granted to You under this License for that Work shall terminate as of the date
+such litigation is filed.
 
-   a) COMMERCIAL USE PROHIBITION
-      Companies, corporations, and for-profit entities are prohibited
-      from using the Software without obtaining explicit written
-      permission from the Licensor. This includes but is not limited to:
-      - Software companies
-      - SaaS providers
-      - Consulting firms
-      - Any entity that generates revenue from software or services
+4. Redistribution. You may reproduce and distribute copies of the Work or
+Derivative Works thereof in any medium, with or without modifications, and in
+Source or Object form, provided that You meet the following conditions:
 
-   b) NO REVERSE ENGINEERING FOR COMMERCIAL PURPOSES
-      You may not reverse engineer, decompile, or disassemble the
-      Software for commercial purposes.
+(a) You must give any other recipients of the Work or Derivative Works a copy of
+this License; and
 
-   c) MODIFICATIONS
-      If you modify the Software, you must:
-      - Retain all copyright notices
-      - Include this license in all copies
-      - Clearly mark your modifications
-      - Not remove or alter any copyright notices
+(b) You must cause any modified files to carry prominent notices stating that
+You changed the files; and
 
-4. ATTRIBUTION
+(c) You must retain, in the Source form of any Derivative Works that You
+distribute, all copyright, patent, trademark, and attribution notices from the
+Source form of the Work, excluding those notices that do not pertain to any part
+of the Derivative Works; and
 
-   You must retain all copyright notices and this license in all copies
-   of the Software or substantial portions of the Software. You must
-   include the following in all distributions:
+(d) If the Work includes a "NOTICE" text file as part of its distribution, then
+any Derivative Works that You distribute must include a readable copy of the
+attribution notices contained within such NOTICE file, excluding those notices
+that do not pertain to any part of the Derivative Works, in at least one of the
+following places: within a NOTICE text file distributed as part of the
+Derivative Works; within the Source form or documentation, if provided along
+with the Derivative Works; or, within a display generated by the Derivative
+Works, if and wherever such third-party notices normally appear. The contents of
+the NOTICE file are for informational purposes only and do not modify the
+License. You may add Your own attribution notices within Derivative Works that
+You distribute, alongside or as an addendum to the NOTICE text from the Work,
+provided that such additional attribution notices cannot be construed as
+modifying the License.
 
-   "This software is licensed under the EgoLlama Non-Commercial
-   Developer License. Commercial use is prohibited without explicit
-   permission."
+You may add Your own copyright statement to Your modifications and may provide
+additional or different license terms and conditions for use, reproduction, or
+distribution of Your modifications, or for any such Derivative Works as a whole,
+provided Your use, reproduction, and distribution of the Work otherwise complies
+with the conditions stated in this License.
 
-5. COMMERCIAL USE PERMISSION
+5. Submission of Contributions. Unless You explicitly state otherwise, any
+Contribution intentionally submitted for inclusion in the Work by You to the
+Licensor shall be under the terms and conditions of this License, without any
+additional terms or conditions. Notwithstanding the above, nothing herein shall
+supersede or modify the terms of any separate license agreement you may have
+executed with Licensor regarding such Contributions.
 
-   To obtain permission for commercial use, you must:
-   a) Contact the Licensor in writing
-   b) Provide details of your intended commercial use
-   c) Obtain explicit written permission before any commercial use
-   d) Comply with any additional terms specified in the permission
+6. Trademarks. This License does not grant permission to use the trade names,
+trademarks, service marks, or product names of the Licensor, except as required
+for reasonable and customary use in describing the origin of the Work and
+reproducing the content of the NOTICE file.
 
-   Contact for commercial licensing inquiries:
-   [Add your contact information here]
+7. Disclaimer of Warranty. Unless required by applicable law or agreed to in
+writing, Licensor provides the Work (and each Contributor provides its
+Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied, including, without limitation, any warranties
+or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+PARTICULAR PURPOSE. You are solely responsible for determining the
+appropriateness of using or redistributing the Work and assume any risks
+associated with Your exercise of permissions under this License.
 
-6. NO WARRANTY
+8. Limitation of Liability. In no event and under no legal theory, whether in
+tort (including negligence), contract, or otherwise, unless required by
+applicable law (such as deliberate and grossly negligent acts) or agreed to in
+writing, shall any Contributor be liable to You for damages, including any
+direct, indirect, special, incidental, or consequential damages of any character
+arising as a result of this License or out of the use or inability to use the
+Work (including but not limited to damages for loss of goodwill, work stoppage,
+computer failure or malfunction, or any and all other commercial damages or
+losses), even if such Contributor has been advised of the possibility of such
+damages.
 
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+9. Accepting Warranty or Additional Liability. While redistributing the Work or
+Derivative Works thereof, You may choose to offer, and charge a fee for,
+acceptance of support, warranty, indemnity, or other liability obligations
+and/or rights consistent with this License. However, in accepting such
+obligations, You may act only on Your own behalf and on Your sole
+responsibility, not on behalf of any other Contributor, and only if You agree to
+indemnify, defend, and hold each Contributor harmless for any liability incurred
+by, or claims asserted against, such Contributor by reason of your accepting any
+such warranty or additional liability.
 
-7. TERMINATION
+END OF TERMS AND CONDITIONS
 
-   This License and the rights granted hereunder will terminate
-   automatically if You fail to comply with any term of this License.
-   Upon termination, you must destroy all copies of the Software.
+APPENDIX: How to apply the Apache License to your work
 
-8. ENFORCEMENT
+   To apply the Apache License to your work, attach the following
+   boilerplate notice, with the fields enclosed by brackets "[]"
+   replaced with your own identifying information. (Don't include
+   the brackets!)  The text should be enclosed in the appropriate
+   comment syntax for the file format. We also recommend that a
+   file or class name and description of purpose be included on the
+   same "printed page" as the copyright notice for easier
+   identification within third-party archives.
 
-   Violation of this license may result in legal action. The Licensor
-   reserves the right to enforce these terms and to seek damages for
-   unauthorized commercial use.
+Copyright [yyyy] [name of copyright owner]
 
-9. GOVERNING LAW
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   This License shall be governed by the laws of [Your Jurisdiction],
-   without regard to its conflict of law provisions.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-================================================================================
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
-SUMMARY FOR DEVELOPERS:
+------------------------------------------------------------------------------
 
-✅ YOU CAN:
-   - Use the Software for personal projects
-   - Modify and distribute for non-commercial purposes
-   - Use in open source projects (non-commercial)
-   - Use for educational and research purposes
-   - Share with other developers
+Section B. Business Source License 1.1 (Commercial Edition)
+-----------------------------------------------------------
 
-❌ YOU CANNOT:
-   - Use the Software for commercial purposes
-   - Sell or profit from the Software
-   - Use in a for-profit company without permission
-   - Remove copyright notices
-   - Use commercially without explicit written permission
+Business Source License 1.1
 
-📧 FOR COMMERCIAL USE:
-   Contact the Licensor for commercial licensing options.
+Licensor: EgoLlama Contributors
+Licensed Work: EgoLlama Gateway (the "Software")
+License Date: 2025-01-01
+Change Date: 2029-01-01
 
-================================================================================
+Licensed Work is subject to the Business Source License 1.1, reproduced below,
+with the following Additional Use Grant:
 
-This license is NOT an Open Source license as defined by the Open Source
-Initiative, as it restricts commercial use. It is designed to protect
-the Software from unauthorized commercial exploitation while allowing
-free use by developers and non-profit organizations.
+> You may use this Software under the Apache License, Version 2.0 for
+> non-commercial, community, academic, or internal evaluation purposes.
+> For production or commercial deployment (including offering the Software as a
+> hosted service), you must obtain a commercial agreement from the Licensor or
+> wait until the Change Date, after which the Software will automatically become
+> available under the Apache License, Version 2.0 for all purposes.
+
+For commercial licensing inquiries, contact: licensing@egollama.ai
+
+-----------------------------------------------------------------------------
+
+Business Source License 1.1
+
+Terms
+
+The Licensor grants you the right to copy, modify, create derivative works,
+redistribute, and make non-production use of the Licensed Work. The Licensor
+may make an Additional Use Grant, above, permitting limited production use.
+
+Effective on the Change Date, the Licensor hereby grants you rights to the
+Licensed Work under the terms of the Change License, and the rights granted by
+this License terminate.
+
+You must not use the Licensed Work for production purposes, except as expressly
+permitted by the Additional Use Grant, if any.
+
+You must not alter or remove any licensing notices in the Licensed Work.
+
+Any use of the Licensed Work in violation of this License will terminate your
+rights under this License automatically.
+
+If you institute patent litigation against any entity (including a cross-claim
+or counterclaim in a lawsuit) alleging that the Licensed Work or a contribution
+incorporated within the Licensed Work constitutes direct or contributory patent
+infringement, then any rights granted to you under this License shall terminate
+as of the date such litigation is filed.
+
+Unless the Licensor or applicable law requires otherwise, the Licensed Work is
+provided on an "AS IS" basis, without warranties or conditions of any kind,
+either express or implied, including without limitation any warranties or
+conditions of title, non-infringement, merchantability, or fitness for a
+particular purpose. You are solely responsible for determining the
+appropriateness of using or redistributing the Licensed Work and assume any risks
+associated with your exercise of permissions under this License.
+
+This License does not grant you trademark rights, even if trademarks are
+included in the Licensed Work.
+
+Nothing in this License constitutes or may be interpreted as a limitation upon,
+or waiver of, any privileges and immunities that apply to the Licensor or you,
+including from the legal processes of any jurisdiction or authority.
+
+Change License: Apache License, Version 2.0
+
+-----------------------------------------------------------------------------
+
+Dual Licensing Guidance
+-----------------------
+
+- If you are an individual developer, researcher, or community member using the
+  Software non-commercially: use the Apache License, Version 2.0.
+- If you are running the Software in production, offering it as a service, or
+  otherwise deriving commercial value: obtain a commercial license under the
+  Business Source License 1.1 terms above.
+- Upon the Change Date, the entire codebase will be available under the Apache
+  License, Version 2.0 for all purposes, including commercial.
+
+For questions about licensing or to negotiate commercial terms, please refer to
+`COMMERCIAL_LICENSING.md` or contact licensing@egollama.ai.
+
