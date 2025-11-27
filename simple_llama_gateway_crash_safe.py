@@ -92,6 +92,100 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# ============================================================================
+# SECURITY: CORS MIDDLEWARE (Prevent Drive-By Attacks)
+# ============================================================================
+from fastapi.middleware.cors import CORSMiddleware
+
+# Get allowed origins from environment or default to localhost only
+allowed_origins = os.getenv(
+    "EGOLLAMA_CORS_ORIGINS",
+    "http://localhost:9000,http://localhost:3000,http://127.0.0.1:9000,http://127.0.0.1:3000"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,  # Specific origins only (not "*")
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE"],  # Only needed methods
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],  # Only needed headers
+    expose_headers=["*"],
+    max_age=3600,
+)
+logger.info(f"✅ CORS middleware enabled (origins: {allowed_origins})")
+
+# ============================================================================
+# SECURITY: API KEY AUTHENTICATION
+# ============================================================================
+
+# Get API key from environment (default to None for development)
+EGOLLAMA_API_KEY = os.getenv("EGOLLAMA_API_KEY")
+REQUIRE_API_KEY = os.getenv("EGOLLAMA_REQUIRE_API_KEY", "false").lower() == "true"
+
+if EGOLLAMA_API_KEY:
+    logger.info("✅ API key authentication enabled")
+else:
+    logger.warning("⚠️  No API key set - endpoints are unprotected! Set EGOLLAMA_API_KEY environment variable.")
+
+from fastapi.security import APIKeyHeader
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(x_api_key: str = Depends(api_key_header)):
+    """Verify API key for protected endpoints"""
+    if not REQUIRE_API_KEY:
+        # If not required, allow access without key
+        return True
+    
+    if not EGOLLAMA_API_KEY:
+        # No key configured, allow access
+        return True
+    
+    if not x_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API key required. Provide X-API-Key header."
+        )
+    
+    if x_api_key != EGOLLAMA_API_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid API key"
+        )
+    
+    return True
+
+# ============================================================================
+# SECURITY: CONTENT-TYPE VALIDATION MIDDLEWARE
+# ============================================================================
+
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class ContentTypeValidationMiddleware(BaseHTTPMiddleware):
+    """Validate Content-Type header for POST requests to prevent CORS simple request attacks"""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Skip validation for GET requests and documentation endpoints
+        if request.method == "POST" and request.url.path not in ["/docs", "/openapi.json", "/redoc"]:
+            content_type = request.headers.get("Content-Type", "")
+            
+            # Require application/json for POST requests with body
+            if request.headers.get("Content-Length", "0") != "0":
+                if "application/json" not in content_type:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "error": "Content-Type must be application/json",
+                            "detail": "This prevents CORS simple request attacks. Always include 'Content-Type: application/json' header."
+                        }
+                    )
+        
+        response = await call_next(request)
+        return response
+
+app.add_middleware(ContentTypeValidationMiddleware)
+logger.info("✅ Content-Type validation middleware enabled")
+
 # Initialize database and Redis
 @app.on_event("startup")
 async def startup_event():
@@ -271,7 +365,7 @@ async def performance_recommendations():
 
 @app.post("/v1/chat/completions")
 @app.post("/chat/completions")
-async def chat_completions(request: ChatCompletionRequest):
+async def chat_completions(request: ChatCompletionRequest, _: bool = Depends(verify_api_key)):
     """OpenAI-compatible chat endpoint"""
     import time
     
@@ -504,7 +598,7 @@ async def chat_completions(request: ChatCompletionRequest):
 # ============================================================================
 
 @app.post("/generate")
-async def generate_text(request: GenerateRequest):
+async def generate_text(request: GenerateRequest, _: bool = Depends(verify_api_key)):
     """Generate text from prompt - OpenAI-compatible completions"""
     import time
     
@@ -609,7 +703,7 @@ _loaded_tokenizer = None
 _loaded_model_id = None
 
 @app.post("/models/load")
-async def load_model(request: LoadModelRequest):
+async def load_model(request: LoadModelRequest, _: bool = Depends(verify_api_key)):
     """Load a model dynamically using HuggingFace transformers"""
     global _loaded_model, _loaded_tokenizer, _loaded_model_id
     
@@ -708,7 +802,7 @@ async def load_model(request: LoadModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/models/unload")
-async def unload_model():
+async def unload_model(_: bool = Depends(verify_api_key)):
     """Unload current model - Used by GPU infrastructure"""
     return {
         "success": True,
@@ -774,4 +868,18 @@ if REDIS_AVAILABLE:
 # ============================================================================
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8082, log_level="info")
+    # Set EGOLLAMA_HOST=0.0.0.0 in Docker if network access is needed
+    server_host = os.getenv("EGOLLAMA_HOST", "127.0.0.1")
+    server_port = int(os.getenv("EGOLLAMA_PORT", "8082"))
+    
+    if server_host == "0.0.0.0":
+        logger.warning("⚠️  Server binding to 0.0.0.0 - accessible from network!")
+        logger.warning("⚠️  Ensure firewall rules and API key authentication are configured!")
+    
+    uvicorn.run(
+        app,
+        host=server_host,
+        port=server_port,
+        log_level="info",
+        access_log=True
+    )

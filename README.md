@@ -14,24 +14,40 @@ A production-ready LLaMA Gateway with FastAPI, PostgreSQL, Redis caching, and GP
 
 ## Quick Start
 
-### ⭐ Easiest Method (Recommended)
+### ⭐ Super Easy Method (Recommended)
 
-**Difficulty:** ⭐ Easy | **Time:** 5 minutes
+**Difficulty:** ⭐ Super Easy | **Time:** 5 minutes
 
-Just run the automated setup script:
+Just run the quick start script - it automatically detects your environment:
 
 ```bash
 git clone <repository-url>
 cd EgoLlama-clean
-./setup.sh
+./quick_start.sh
 ```
 
 That's it! The script will:
-- ✅ Check prerequisites (Docker, Docker Compose)
+- ✅ Auto-detect Docker or standalone mode
+- ✅ Check prerequisites
 - ✅ Create environment configuration
-- ✅ Start all services (PostgreSQL, Redis, Gateway)
+- ✅ Start all services
 - ✅ Wait for services to be healthy
 - ✅ Test the gateway
+
+### Alternative Deployment Methods
+
+**Docker Deployment:**
+```bash
+./setup.sh
+```
+
+**Standalone Deployment (no Docker):**
+```bash
+./deploy_standalone.sh
+./start_gateway.sh
+```
+
+For detailed deployment instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 
 ### Manual Setup
 
@@ -314,7 +330,25 @@ See `LICENSE` file for complete terms and conditions.
 
 Contributions welcome! Please open an issue or submit a pull request.
 
+## Deployment Scripts
+
+EgoLlama-clean includes several deployment scripts to make setup easier:
+
+| Script | Purpose | Use Case |
+|--------|---------|----------|
+| `quick_start.sh` | Auto-detect and deploy | ⭐ **Recommended** - Works with Docker or standalone |
+| `setup.sh` | Docker deployment | Docker-based deployments |
+| `deploy_standalone.sh` | Standalone deployment | Systems without Docker |
+| `start_v2_gateway.sh` | Start gateway | Manual startup after deployment |
+| `start_gateway.sh` | Start gateway (created by deploy_standalone.sh) | Standalone mode startup |
+
+For complete deployment instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+
 ## Support
 
-For issues and questions, please open a GitHub issue.
+For issues and questions:
+1. Check [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for deployment help
+2. Check [SETUP_GUIDE.md](SETUP_GUIDE.md) for setup details
+3. Check [SECURITY_FIXES_APPLIED.md](SECURITY_FIXES_APPLIED.md) for security configuration
+4. Open a GitHub issue
 

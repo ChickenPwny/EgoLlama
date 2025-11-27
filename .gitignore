@@ -33,13 +33,29 @@ ENV/
 *.swo
 *~
 
-# Environment
+# Environment (contains secrets - NEVER commit!)
 .env
 .env.local
+.env.*
+!.env.example
 
-# Logs
+# Logs (may contain sensitive information)
 *.log
 logs/
+*.log.*
+
+# Secrets and credentials
+*secret*
+*password*
+*key*
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+*.token
 
 # Database
 *.db
