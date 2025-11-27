@@ -116,6 +116,13 @@ EOF
     while [ $attempt -lt $max_attempts ]; do
         if docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
             success "PostgreSQL is ready"
+            # Run database migrations
+            info "Running database migrations..."
+            if docker-compose exec -T gateway alembic upgrade head >/dev/null 2>&1; then
+                success "Database migrations completed"
+            else
+                warning "Migration failed (may already be up to date)"
+            fi
             break
         fi
         attempt=$((attempt + 1))

@@ -133,14 +133,24 @@ EOF
     fi
 }
 
-# Check optional services
-check_optional_services() {
+    # Check optional services
+    check_optional_services() {
     title "Checking optional services..."
     
     # PostgreSQL
     if command_exists psql; then
         if psql -h localhost -U postgres -d ego -c "SELECT 1;" >/dev/null 2>&1; then
             success "PostgreSQL is available"
+            # Run database migrations
+            info "Running database migrations..."
+            if [ -d "venv" ]; then
+                source venv/bin/activate
+                if alembic upgrade head >/dev/null 2>&1; then
+                    success "Database migrations completed"
+                else
+                    warning "Migration failed (may already be up to date)"
+                fi
+            fi
         else
             warning "PostgreSQL client found but connection failed"
             info "Gateway will work without PostgreSQL (graceful degradation)"

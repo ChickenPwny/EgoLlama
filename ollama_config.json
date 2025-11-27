@@ -1,0 +1,133 @@
+{
+  "endpoints": [
+    {
+      "name": "local",
+      "base_url": "http://localhost:11434",
+      "enabled": true,
+      "priority": 1,
+      "timeout": 30,
+      "description": "Local Ollama instance (default)"
+    },
+    {
+      "name": "remote1",
+      "base_url": "http://192.168.1.100:11434",
+      "enabled": false,
+      "priority": 2,
+      "timeout": 30,
+      "description": "Remote Ollama instance 1",
+      "api_key": null
+    },
+    {
+      "name": "cloud",
+      "base_url": "https://ollama.example.com",
+      "enabled": false,
+      "priority": 3,
+      "timeout": 60,
+      "description": "Cloud Ollama instance",
+      "api_key": null
+    }
+  ],
+  "models": {
+    "llama3.1:8b": {
+      "endpoint": "local",
+      "model_name": "llama3.1:8b",
+      "description": "Meta Llama 3.1 8B - Fast and efficient",
+      "context_size": 8192,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048,
+      "huggingface_id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "load_into_egollama": true
+    },
+    "llama3.1:70b": {
+      "endpoint": "local",
+      "model_name": "llama3.1:70b",
+      "description": "Meta Llama 3.1 70B - High quality",
+      "context_size": 8192,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 4096,
+      "huggingface_id": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+      "load_into_egollama": true
+    },
+    "mistral": {
+      "endpoint": "local",
+      "model_name": "mistral",
+      "description": "Mistral 7B - Balanced performance",
+      "context_size": 8192,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048,
+      "huggingface_id": "mistralai/Mistral-7B-Instruct-v0.2",
+      "load_into_egollama": true
+    },
+    "mistral:7b-instruct": {
+      "endpoint": "local",
+      "model_name": "mistral:7b-instruct",
+      "description": "Mistral 7B Instruct - Instruction tuned",
+      "context_size": 8192,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048,
+      "huggingface_id": "mistralai/Mistral-7B-Instruct-v0.2",
+      "load_into_egollama": true
+    },
+    "codellama": {
+      "endpoint": "local",
+      "model_name": "codellama",
+      "description": "Code Llama - Code generation",
+      "context_size": 16384,
+      "enabled": true,
+      "default_temperature": 0.2,
+      "default_max_tokens": 4096,
+      "huggingface_id": "codellama/CodeLlama-7b-Instruct-hf",
+      "load_into_egollama": true
+    },
+    "codellama:13b": {
+      "endpoint": "local",
+      "model_name": "codellama:13b",
+      "description": "Code Llama 13B - Larger code model",
+      "context_size": 16384,
+      "enabled": true,
+      "default_temperature": 0.2,
+      "default_max_tokens": 4096
+    },
+    "phi": {
+      "endpoint": "local",
+      "model_name": "phi",
+      "description": "Microsoft Phi - Small and fast",
+      "context_size": 2048,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 1024
+    },
+    "gemma:2b": {
+      "endpoint": "local",
+      "model_name": "gemma:2b",
+      "description": "Google Gemma 2B - Lightweight",
+      "context_size": 8192,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048
+    },
+    "neural-chat": {
+      "endpoint": "local",
+      "model_name": "neural-chat",
+      "description": "Neural Chat - Conversational",
+      "context_size": 4096,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048
+    },
+    "llama2": {
+      "endpoint": "local",
+      "model_name": "llama2",
+      "description": "Meta Llama 2 - Previous generation",
+      "context_size": 4096,
+      "enabled": true,
+      "default_temperature": 0.7,
+      "default_max_tokens": 2048
+    }
+  }
+}
+

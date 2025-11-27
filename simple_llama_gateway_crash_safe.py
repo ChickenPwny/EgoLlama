@@ -41,6 +41,14 @@ except ImportError as e:
     REDIS_AVAILABLE = False
     print(f"⚠️ Redis/SQLAlchemy not available: {e}")
 
+# Ollama provider
+try:
+    from ollama_provider import get_ollama_provider
+    OLLAMA_AVAILABLE = True
+except ImportError as e:
+    OLLAMA_AVAILABLE = False
+    print(f"⚠️ Ollama provider not available: {e}")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -241,7 +249,10 @@ async def root():
     """Root endpoint"""
     features = []
     if REDIS_AVAILABLE:
-        features = ["redis_cache", "postgresql_persistence"]
+        features.append("redis_cache")
+        features.append("postgresql_persistence")
+    if OLLAMA_AVAILABLE:
+        features.append("ollama_integration")
     
     endpoints = {
         "health": "/health",
@@ -254,7 +265,11 @@ async def root():
         "cache_stats": "/api/cache/stats",
         "chat": "/v1/chat/completions",
         "generate": "/generate",
-        "load_model": "/models/load"
+        "load_model": "/models/load",
+        "ollama_endpoints": "/api/ollama/endpoints",
+        "ollama_models": "/api/ollama/models",
+        "ollama_preconfigured": "/api/ollama/models/preconfigured",
+        "ollama_health": "/api/ollama/health"
     }
     if REDIS_AVAILABLE:
         endpoints["db_health"] = "/api/db/health"
@@ -392,6 +407,168 @@ async def chat_completions(request: ChatCompletionRequest, _: bool = Depends(ver
         
         prompt = '\n'.join(prompt_parts)
         logger.info(f"📝 Prompt: {prompt[:100]}...")
+        
+        # Check if model is an Ollama model (starts with "ollama:" or matches preconfigured Ollama models)
+        is_ollama_model = False
+        ollama_model_name = None
+        
+        if OLLAMA_AVAILABLE:
+            try:
+                provider = get_ollama_provider()
+                # Check if model matches preconfigured Ollama models or uses ollama: prefix
+                if model.startswith("ollama:"):
+                    is_ollama_model = True
+                    ollama_model_name = model.replace("ollama:", "")
+                elif model in provider.models:
+                    is_ollama_model = True
+                    ollama_model_name = model
+                elif any(model in ep.get('models', []) for ep in provider.endpoints):
+                    is_ollama_model = True
+                    ollama_model_name = model
+                
+                if is_ollama_model:
+                    # Check if model should be loaded into EgoLlama instead of proxying
+                    model_config = provider.models.get(ollama_model_name, {})
+                    load_into_egollama = model_config.get('load_into_egollama', False)
+                    hf_model_id = model_config.get('huggingface_id')
+                    
+                    if load_into_egollama and hf_model_id:
+                        # Load model into EgoLlama's memory/GPU
+                        logger.info(f"🦙 Loading Ollama model '{ollama_model_name}' into EgoLlama (HF: {hf_model_id})")
+                        try:
+                            # Use the existing model loading mechanism
+                            from transformers import AutoModelForCausalLM, AutoTokenizer
+                            import torch
+                            
+                            # Load tokenizer
+                            tokenizer = AutoTokenizer.from_pretrained(
+                                hf_model_id,
+                                trust_remote_code=True
+                            )
+                            
+                            # Load model
+                            model = AutoModelForCausalLM.from_pretrained(
+                                hf_model_id,
+                                trust_remote_code=True,
+                                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                                device_map="auto" if torch.cuda.is_available() else None
+                            )
+                            
+                            if not torch.cuda.is_available():
+                                model = model.to("cpu")
+                            
+                            # Store in global model storage
+                            global _loaded_model, _loaded_tokenizer, _loaded_model_id
+                            _loaded_model = model
+                            _loaded_tokenizer = tokenizer
+                            _loaded_model_id = hf_model_id
+                            
+                            logger.info(f"✅ Ollama model loaded into EgoLlama: {ollama_model_name}")
+                            
+                            # Now generate using the loaded model
+                            prompt_text = '\n'.join([
+                                f"{msg.get('role') if isinstance(msg, dict) else msg.role}: {msg.get('content') if isinstance(msg, dict) else msg.content}"
+                                for msg in messages
+                            ])
+                            
+                            inputs = tokenizer(prompt_text, return_tensors="pt", truncation=True, max_length=2048)
+                            if torch.cuda.is_available():
+                                inputs = {k: v.to("cuda") for k, v in inputs.items()}
+                                model = model.to("cuda")
+                            else:
+                                inputs = {k: v.to("cpu") for k, v in inputs.items()}
+                            
+                            with torch.no_grad():
+                                outputs = model.generate(
+                                    **inputs,
+                                    max_new_tokens=max_tokens,
+                                    temperature=temperature,
+                                    do_sample=True,
+                                    pad_token_id=tokenizer.eos_token_id
+                                )
+                            
+                            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                            if prompt_text in generated_text:
+                                generated_text = generated_text.replace(prompt_text, "").strip()
+                            
+                            prompt_tokens = len(tokenizer.encode(prompt_text))
+                            completion_tokens = len(tokenizer.encode(generated_text))
+                            
+                            return {
+                                "id": f"chatcmpl-{int(time.time())}",
+                                "object": "chat.completion",
+                                "created": int(time.time()),
+                                "model": ollama_model_name,
+                                "choices": [{
+                                    "index": 0,
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": generated_text
+                                    },
+                                    "finish_reason": "stop"
+                                }],
+                                "usage": {
+                                    "prompt_tokens": prompt_tokens,
+                                    "completion_tokens": completion_tokens,
+                                    "total_tokens": prompt_tokens + completion_tokens
+                                },
+                                "metadata": {
+                                    "engine": "EgoLlama (Ollama model loaded)",
+                                    "ollama_model": ollama_model_name,
+                                    "huggingface_model": hf_model_id,
+                                    "device": "cuda" if torch.cuda.is_available() else "cpu"
+                                }
+                            }
+                        except Exception as load_error:
+                            logger.warning(f"⚠️ Failed to load Ollama model into EgoLlama: {load_error}")
+                            logger.info("🔄 Falling back to Ollama API proxy...")
+                            # Fall through to proxy mode
+                    
+                    # Proxy mode: use Ollama API (original behavior)
+                    logger.info(f"🦙 Using Ollama model via API proxy: {ollama_model_name}")
+                    try:
+                        result = await provider.generate(
+                            model=ollama_model_name,
+                            messages=messages,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                            stream=False
+                        )
+                        
+                        if result and result.get('content'):
+                            logger.info("✅ Ollama generation successful!")
+                            return {
+                                "id": f"chatcmpl-{int(time.time())}",
+                                "object": "chat.completion",
+                                "created": int(time.time()),
+                                "model": model,
+                                "choices": [{
+                                    "index": 0,
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": result['content']
+                                    },
+                                    "finish_reason": "stop"
+                                }],
+                                "usage": {
+                                    "prompt_tokens": result.get('prompt_eval_count', 0),
+                                    "completion_tokens": result.get('eval_count', 0),
+                                    "total_tokens": result.get('prompt_eval_count', 0) + result.get('eval_count', 0)
+                                },
+                                "metadata": {
+                                    "engine": "Ollama",
+                                    "endpoint": result.get('endpoint', 'unknown'),
+                                    "model_name": result.get('model', ollama_model_name),
+                                    "total_duration_ms": result.get('total_duration', 0) / 1000000,  # Convert nanoseconds to ms
+                                    "load_duration_ms": result.get('load_duration', 0) / 1000000,
+                                    "eval_duration_ms": result.get('eval_duration', 0) / 1000000
+                                }
+                            }
+                    except Exception as ollama_error:
+                        logger.warning(f"⚠️ Ollama generation failed: {ollama_error}")
+                        # Continue to fallback
+            except Exception as provider_error:
+                logger.warning(f"⚠️ Ollama provider error: {provider_error}")
         
         # Try loaded transformers model first, then GPU module, then fallback
         try:
@@ -641,41 +818,43 @@ async def generate_text(request: GenerateRequest, _: bool = Depends(verify_api_k
             logger.warning(f"⚠️ EgoLlama GPU engine failed: {engine_error}")
         
         # Fallback to Ollama if GPU fails
-        try:
-            logger.info("🔄 Falling back to Ollama...")
-            import httpx
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                ollama_response = await client.post(
-                    "http://localhost:11434/api/generate",
-                    json={
-                        "model": "llama3.1:8b",
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": temperature,
-                            "num_predict": max_tokens
-                        }
-                    }
+        if OLLAMA_AVAILABLE:
+            try:
+                logger.info("🔄 Falling back to Ollama...")
+                provider = get_ollama_provider()
+                
+                # Try default model or first available
+                default_model = "llama3.1:8b"
+                if default_model not in provider.models:
+                    # Use first available preconfigured model
+                    available_models = [m for m in provider.models.keys() if provider.models[m].get('enabled', True)]
+                    if available_models:
+                        default_model = available_models[0]
+                
+                result = await provider.generate(
+                    model=default_model,
+                    prompt=prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=False
                 )
                 
-                if ollama_response.status_code == 200:
-                    ollama_data = ollama_response.json()
-                    content = ollama_data.get('response', '')
-                    
+                if result and result.get('content'):
                     logger.info("✅ Ollama fallback successful!")
                     return {
-                        "generated_text": content,
-                        "tokens": ollama_data.get('eval_count', 0),
+                        "generated_text": result['content'],
+                        "tokens": result.get('eval_count', 0),
                         "finish_reason": "stop",
                         "timestamp": time.time(),
                         "metadata": {
-                            "engine": "Ollama (fallback)",
+                            "engine": "Ollama",
+                            "endpoint": result.get('endpoint', 'unknown'),
+                            "model": result.get('model', default_model),
                             "gpu_accelerated": False
                         }
                     }
-        except Exception as ollama_error:
-            logger.warning(f"⚠️ Ollama fallback also failed: {ollama_error}")
+            except Exception as ollama_error:
+                logger.warning(f"⚠️ Ollama fallback also failed: {ollama_error}")
         
         # Final fallback: return error message
         logger.error("❌ All LLM engines failed")
@@ -704,8 +883,20 @@ _loaded_model_id = None
 
 @app.post("/models/load")
 async def load_model(request: LoadModelRequest, _: bool = Depends(verify_api_key)):
-    """Load a model dynamically using HuggingFace transformers"""
+    """Load a model dynamically using HuggingFace transformers or Ollama model mapping"""
     global _loaded_model, _loaded_tokenizer, _loaded_model_id
+    
+    # Check if this is an Ollama model that should be loaded via HuggingFace
+    if OLLAMA_AVAILABLE:
+        try:
+            provider = get_ollama_provider()
+            if request.model_id in provider.models:
+                model_config = provider.models[request.model_id]
+                if model_config.get('load_into_egollama') and model_config.get('huggingface_id'):
+                    logger.info(f"🦙 Mapping Ollama model '{request.model_id}' to HuggingFace: {model_config['huggingface_id']}")
+                    request.model_id = model_config['huggingface_id']
+        except Exception as e:
+            logger.debug(f"Ollama model mapping check failed: {e}")
     
     try:
         # Check if model path exists locally
@@ -810,6 +1001,140 @@ async def unload_model(_: bool = Depends(verify_api_key)):
     }
 
 # ============================================================================
+# OLLAMA MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/api/ollama/endpoints")
+@cached_response(ttl=30)
+async def list_ollama_endpoints():
+    """List configured Ollama endpoints"""
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Ollama provider not available")
+    
+    provider = get_ollama_provider()
+    endpoints = []
+    
+    for endpoint in provider.get_available_endpoints():
+        health = await provider.check_endpoint_health(endpoint)
+        endpoints.append({
+            "name": endpoint['name'],
+            "base_url": endpoint['base_url'],
+            "enabled": endpoint.get('enabled', True),
+            "priority": endpoint.get('priority', 999),
+            "timeout": endpoint.get('timeout', 30),
+            "description": endpoint.get('description', ''),
+            "healthy": health
+        })
+    
+    return {
+        "endpoints": endpoints,
+        "total": len(endpoints)
+    }
+
+@app.get("/api/ollama/models")
+@cached_response(ttl=30)
+async def list_ollama_models(endpoint: Optional[str] = None):
+    """List available Ollama models from endpoint(s)"""
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Ollama provider not available")
+    
+    provider = get_ollama_provider()
+    models = await provider.list_models(endpoint)
+    
+    return {
+        "models": models,
+        "total": len(models),
+        "endpoint": endpoint or "all"
+    }
+
+@app.get("/api/ollama/models/preconfigured")
+@cached_response(ttl=60)
+async def list_preconfigured_ollama_models():
+    """List preconfigured Ollama models"""
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Ollama provider not available")
+    
+    provider = get_ollama_provider()
+    models = []
+    
+    for model_id, model_config in provider.models.items():
+        if model_config.get('enabled', True):
+            models.append({
+                "id": model_id,
+                "model_name": model_config.get('model_name', model_id),
+                "endpoint": model_config.get('endpoint', 'local'),
+                "description": model_config.get('description', ''),
+                "context_size": model_config.get('context_size', 8192),
+                "default_temperature": model_config.get('default_temperature', 0.7),
+                "default_max_tokens": model_config.get('default_max_tokens', 2048),
+                "enabled": True
+            })
+    
+    return {
+        "models": models,
+        "total": len(models)
+    }
+
+@app.post("/api/ollama/pull")
+async def pull_ollama_model(
+    model_name: str = Body(..., embed=True),
+    endpoint: Optional[str] = Body(None, embed=True),
+    _: bool = Depends(verify_api_key)
+):
+    """Pull an Ollama model"""
+    if not OLLAMA_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Ollama provider not available")
+    
+    provider = get_ollama_provider()
+    result = await provider.pull_model(model_name, endpoint)
+    
+    if result.get('success'):
+        return {
+            "success": True,
+            "message": result.get('message', f"Model {model_name} pulled successfully"),
+            "model": model_name,
+            "endpoint": result.get('endpoint')
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=result.get('error', 'Failed to pull model')
+        )
+
+@app.get("/api/ollama/health")
+@cached_response(ttl=10)
+async def ollama_health():
+    """Check Ollama endpoints health"""
+    if not OLLAMA_AVAILABLE:
+        return {
+            "available": False,
+            "endpoints": [],
+            "healthy_count": 0
+        }
+    
+    provider = get_ollama_provider()
+    endpoints = provider.get_available_endpoints()
+    health_status = []
+    healthy_count = 0
+    
+    for endpoint in endpoints:
+        is_healthy = await provider.check_endpoint_health(endpoint)
+        if is_healthy:
+            healthy_count += 1
+        health_status.append({
+            "name": endpoint['name'],
+            "base_url": endpoint['base_url'],
+            "healthy": is_healthy
+        })
+    
+    return {
+        "available": True,
+        "endpoints": health_status,
+        "healthy_count": healthy_count,
+        "total_count": len(endpoints)
+    }
+
+# ============================================================================
 # MODEL & STATS ENDPOINTS
 # ============================================================================
 
@@ -817,9 +1142,54 @@ async def unload_model(_: bool = Depends(verify_api_key)):
 @cached_response(ttl=10)
 async def list_models():
     """List available models"""
+    models = []
+    
+    # Add Ollama models if available
+    if OLLAMA_AVAILABLE:
+        try:
+            provider = get_ollama_provider()
+            # Get preconfigured models
+            for model_id, model_config in provider.models.items():
+                if model_config.get('enabled', True):
+                    models.append({
+                        "id": model_id,
+                        "name": model_config.get('model_name', model_id),
+                        "type": "ollama",
+                        "description": model_config.get('description', ''),
+                        "endpoint": model_config.get('endpoint', 'local'),
+                        "context_size": model_config.get('context_size', 8192),
+                        "enabled": True
+                    })
+            
+            # Get models from Ollama endpoints
+            for endpoint in provider.get_available_endpoints():
+                try:
+                    endpoint_models = await provider.list_models(endpoint['name'])
+                    for model in endpoint_models:
+                        # Only add if not already in preconfigured models
+                        if not any(m['id'] == model['name'] for m in models):
+                            models.append({
+                                "id": model['name'],
+                                "name": model['name'],
+                                "type": "ollama",
+                                "endpoint": endpoint['name'],
+                                "endpoint_url": model.get('endpoint_url'),
+                                "size": model.get('size', 0),
+                                "enabled": True
+                            })
+                except Exception as e:
+                    logger.debug(f"Failed to list models from {endpoint['name']}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to get Ollama models: {e}")
+    
     return {
-        "models": [],
-        "total": 0
+        "models": models,
+        "total": len(models),
+        "providers": {
+            "ollama": OLLAMA_AVAILABLE,
+            "huggingface": True,
+            "gpu": True
+        }
     }
 
 @app.get("/stats")
