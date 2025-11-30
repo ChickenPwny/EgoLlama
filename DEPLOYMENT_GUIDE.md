@@ -205,24 +205,181 @@ sudo systemctl start egollama-gateway
 sudo systemctl status egollama-gateway
 ```
 
+## Model Setup
+
+### Installing Ollama Models
+
+EgoLlama Gateway supports Ollama for model inference. To set up Ollama:
+
+1. **Automatic Setup (Recommended):**
+   ```bash
+   ./setup_ollama.sh
+   ```
+   
+   This script will:
+   - ✅ Install Ollama if not present
+   - ✅ Start Ollama service
+   - ✅ Pull recommended models (llama3.2:1b, mistral:7b, phi3:3.8b, codellama:7b)
+   - ✅ Verify installation
+
+2. **Manual Ollama Installation:**
+   ```bash
+   # Install Ollama
+   curl -fsSL https://ollama.ai/install.sh | sh
+   
+   # Start Ollama service (in background)
+   ollama serve &
+   
+   # Wait for service to start
+   sleep 10
+   
+   # Pull models
+   ollama pull llama3.2:1b
+   ollama pull mistral:7b
+   ollama pull phi3:3.8b
+   ollama pull codellama:7b
+   
+   # Verify installation
+   ollama list
+   ```
+
+3. **Configure Ollama Models:**
+   
+   Edit `ollama_config.json` to configure models and endpoints:
+   ```json
+   {
+     "endpoints": [
+       {
+         "name": "local",
+         "base_url": "http://localhost:11434",
+         "enabled": true,
+         "priority": 1,
+         "timeout": 30
+       }
+     ],
+     "models": {
+       "llama3.1:8b": {
+         "endpoint": "local",
+         "model_name": "llama3.1:8b",
+         "huggingface_id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+         "load_into_egollama": true,
+         "enabled": true,
+         "context_size": 8192,
+         "default_temperature": 0.7,
+         "default_max_tokens": 2048
+       }
+     }
+   }
+   ```
+
+4. **Verify Ollama Setup:**
+   ```bash
+   # Check Ollama status (direct)
+   curl http://localhost:11434/api/tags
+   
+   # Check gateway Ollama health
+   curl http://localhost:8082/api/ollama/health
+   
+   # List available models via gateway
+   curl http://localhost:8082/api/ollama/models
+   
+   # List preconfigured models
+   curl http://localhost:8082/api/ollama/models/preconfigured
+   ```
+
+### Installing HuggingFace Models
+
+EgoLlama Gateway can use HuggingFace models directly or via Ollama mappings:
+
+1. **Via Ollama (Recommended):**
+   
+   Models are automatically mapped from Ollama to HuggingFace when `load_into_egollama: true` is set in `ollama_config.json`. The gateway will download HuggingFace models on first use from the `huggingface_id` specified in the config.
+
+2. **Direct HuggingFace Usage:**
+   
+   Models are automatically downloaded from HuggingFace Hub when requested using the full model ID (e.g., `meta-llama/Meta-Llama-3.1-8B-Instruct`). No manual installation required.
+
+3. **Configure HuggingFace:**
+   
+   Set HuggingFace token (optional, for private models):
+   ```bash
+   # In .env file
+   HF_TOKEN=your-huggingface-token-here
+   ```
+   
+   Or export as environment variable:
+   ```bash
+   export HF_TOKEN=your-huggingface-token-here
+   ```
+
+4. **Verify HuggingFace Integration:**
+   ```bash
+   # Check available models (includes both Ollama and HuggingFace)
+   curl http://localhost:8082/models
+   ```
+
+### Model Management
+
+**Pull new Ollama model via API:**
+```bash
+curl -X POST http://localhost:8082/api/ollama/pull \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{"model": "llama3.1:70b"}'
+```
+
+**Pull Ollama model via CLI:**
+```bash
+ollama pull llama3.1:70b
+```
+
+**List all available models:**
+```bash
+# Via Ollama CLI
+ollama list
+
+# Via Gateway API
+curl http://localhost:8082/models
+```
+
 ## Production Configuration
 
 ### Security Settings
 
 **REQUIRED for production:**
 
-1. **API Key Authentication:**
+1. **Environment Mode:**
+   ```bash
+   ENVIRONMENT=production
+   ```
+   - Production mode enforces stricter security defaults
+   - Generic error messages (no stack traces)
+   - Requires API key if configured
+
+2. **API Key Authentication:**
    ```bash
    EGOLLAMA_API_KEY=your-strong-random-key-here
    EGOLLAMA_REQUIRE_API_KEY=true
    ```
+   - Generate a strong, random API key (min 32 characters)
+   - Store securely (use secrets management in production)
 
-2. **CORS Configuration:**
+3. **CORS Configuration:**
    ```bash
    EGOLLAMA_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
    ```
+   - Restrict to your actual domains
+   - Never use `*` in production
 
-3. **Host Binding:**
+4. **Remote Code Execution (CRITICAL):**
+   ```bash
+   EGOLLAMA_TRUST_REMOTE_CODE=false
+   ```
+   - **ALWAYS keep this `false` unless you fully trust the model source**
+   - Setting to `true` allows models to execute arbitrary Python code
+   - Only enable for verified internal models
+
+5. **Host Binding:**
    ```bash
    # For Docker
    EGOLLAMA_HOST=0.0.0.0
@@ -230,6 +387,17 @@ sudo systemctl status egollama-gateway
    # For standalone (behind reverse proxy)
    EGOLLAMA_HOST=127.0.0.1
    ```
+
+### Security Checklist
+
+Before deploying to production, ensure:
+- [ ] `ENVIRONMENT=production` is set
+- [ ] Strong `EGOLLAMA_API_KEY` is configured
+- [ ] `EGOLLAMA_REQUIRE_API_KEY=true`
+- [ ] `EGOLLAMA_TRUST_REMOTE_CODE=false` (unless absolutely necessary)
+- [ ] CORS origins restricted to your domains
+- [ ] SSL/TLS enabled (via reverse proxy)
+- [ ] Review `SECURITY_FIXES_APPLIED.md` for recent security updates
 
 ### Reverse Proxy (Nginx)
 
@@ -281,8 +449,190 @@ sudo certbot --nginx -d yourdomain.com
 | `EGOLLAMA_DATABASE_URL` | PostgreSQL connection | (optional) |
 | `REDIS_HOST` | Redis host | `localhost` |
 | `REDIS_PORT` | Redis port | `6379` |
+| `ENVIRONMENT` | Environment mode (`development`/`production`) | `development` |
+| `EGOLLAMA_TRUST_REMOTE_CODE` | Enable remote code execution for models | `false` |
+
+**Security Note:**
+- `ENVIRONMENT=production` enforces stricter security defaults
+- `EGOLLAMA_TRUST_REMOTE_CODE=true` should ONLY be used for verified internal models
+- See `SECURITY_FIXES_APPLIED.md` for security configuration details
 
 See `env.example` for complete list.
+
+## Using the Server
+
+### API Endpoints
+
+#### Text Generation
+
+**Endpoint:** `POST /generate`
+
+```bash
+curl -X POST http://localhost:8082/generate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "prompt": "What is machine learning?",
+    "max_tokens": 512,
+    "temperature": 0.7,
+    "model": "llama3.1:8b"
+  }'
+```
+
+#### Chat Completions (OpenAI-compatible)
+
+**Endpoint:** `POST /v1/chat/completions`
+
+```bash
+curl -X POST http://localhost:8082/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "model": "mistral:7b",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing"}
+    ],
+    "max_tokens": 512,
+    "temperature": 0.7
+  }'
+```
+
+#### List Available Models
+
+```bash
+# List all models (Ollama + HuggingFace)
+curl http://localhost:8082/models
+
+# List Ollama models from specific endpoint
+curl http://localhost:8082/api/ollama/models?endpoint=local
+
+# List all Ollama models
+curl http://localhost:8082/api/ollama/models
+
+# List preconfigured Ollama models
+curl http://localhost:8082/api/ollama/models/preconfigured
+```
+
+#### Pull Ollama Model via API
+
+```bash
+curl -X POST http://localhost:8082/api/ollama/pull \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{"model": "llama3.1:70b"}'
+```
+
+#### Health Check
+
+```bash
+# Overall health
+curl http://localhost:8082/health
+
+# Ollama health (checks all endpoints)
+curl http://localhost:8082/api/ollama/health
+
+# Database health
+curl http://localhost:8082/api/db/health
+
+# Redis health
+curl http://localhost:8082/api/redis/health
+```
+
+### Using Different Models
+
+1. **Ollama Models:**
+   - Use model name from `ollama list` (e.g., `mistral:7b`)
+   - Or use `ollama:model-name` prefix (e.g., `ollama:mistral:7b`)
+   - Models are configured in `ollama_config.json`
+
+2. **HuggingFace Models:**
+   - Use full HuggingFace model ID (e.g., `meta-llama/Meta-Llama-3.1-8B-Instruct`)
+   - Or use Ollama model name that has `load_into_egollama: true` configured
+   - Models are automatically downloaded on first use
+
+3. **Default Models:**
+   - If no model specified, uses configured default
+   - Check `/models` endpoint for available options
+
+### Example Usage Scenarios
+
+**Basic Text Generation:**
+```bash
+curl -X POST http://localhost:8082/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Hello, world! Explain what AI is.",
+    "max_tokens": 100
+  }'
+```
+
+**Chat with System Message:**
+```bash
+curl -X POST http://localhost:8082/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mistral:7b",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is Python?"}
+    ],
+    "max_tokens": 256,
+    "temperature": 0.7
+  }'
+```
+
+**Code Generation with CodeLlama:**
+```bash
+curl -X POST http://localhost:8082/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Write a Python function to calculate fibonacci numbers",
+    "model": "codellama:7b",
+    "max_tokens": 256,
+    "temperature": 0.2
+  }'
+```
+
+**Multi-turn Conversation:**
+```bash
+curl -X POST http://localhost:8082/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.1:8b",
+    "messages": [
+      {"role": "user", "content": "What is recursion?"},
+      {"role": "assistant", "content": "Recursion is a programming technique..."},
+      {"role": "user", "content": "Can you give me an example?"}
+    ],
+    "max_tokens": 512
+  }'
+```
+
+**Using HuggingFace Model Directly:**
+```bash
+curl -X POST http://localhost:8082/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Translate to French: Hello, how are you?",
+    "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "max_tokens": 100
+  }'
+```
+
+### API Authentication
+
+If `EGOLLAMA_REQUIRE_API_KEY=true`, include the API key in requests:
+
+```bash
+# Set your API key
+export API_KEY="your-api-key-here"
+
+# Use in requests
+curl -X POST http://localhost:8082/generate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"prompt": "Hello", "max_tokens": 50}'
+```
 
 ## Monitoring
 

@@ -264,8 +264,9 @@ def check_rate_limit(identifier: str, limit: int = None, window: int = None) -> 
         
     except Exception as e:
         logger.error(f"Rate limit check error: {e}")
-        # On error, allow the request (fail open)
-        return (True, 999999)
+        # SECURITY: Fail closed for security - deny on error to prevent DoS
+        # If rate limiting fails, deny access to be safe
+        return (False, 0)
 
 
 # ============================================================================

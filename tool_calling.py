@@ -208,47 +208,137 @@ class ToolRegistry:
         self.register_tool(email_tool)
     
     async def _calculator_function(self, expression: str) -> str:
-        """Calculator function"""
+        """Calculator function - Safe mathematical expression evaluation"""
         try:
-            # Safe evaluation of mathematical expressions
-            allowed_chars = set('0123456789+-*/.() ')
-            if not all(c in allowed_chars for c in expression):
-                return "Error: Invalid characters in expression"
+            import ast
+            import operator
             
-            result = eval(expression)
+            # Safe binary operations
+            BINOPS = {
+                ast.Add: operator.add,
+                ast.Sub: operator.sub,
+                ast.Mult: operator.mul,
+                ast.Div: operator.truediv,
+                ast.Pow: operator.pow,
+                ast.Mod: operator.mod,
+                ast.FloorDiv: operator.floordiv,
+            }
+            
+            # Safe unary operations
+            UNOPS = {
+                ast.UAdd: lambda x: +x,
+                ast.USub: lambda x: -x,
+            }
+            
+            def safe_eval(node):
+                """Recursively evaluate AST nodes safely"""
+                if isinstance(node, ast.Constant):  # Python 3.8+
+                    return node.value
+                elif isinstance(node, ast.Num):  # Python < 3.8
+                    return node.n
+                elif isinstance(node, ast.BinOp):
+                    op_type = type(node.op)
+                    if op_type not in BINOPS:
+                        raise ValueError(f"Unsupported binary operation: {op_type.__name__}")
+                    left_val = safe_eval(node.left)
+                    right_val = safe_eval(node.right)
+                    return BINOPS[op_type](left_val, right_val)
+                elif isinstance(node, ast.UnaryOp):
+                    op_type = type(node.op)
+                    if op_type not in UNOPS:
+                        raise ValueError(f"Unsupported unary operation: {op_type.__name__}")
+                    operand_val = safe_eval(node.operand)
+                    return UNOPS[op_type](operand_val)
+                else:
+                    raise ValueError(f"Unsupported AST node type: {type(node).__name__}")
+            
+            # Parse expression into AST
+            tree = ast.parse(expression, mode='eval')
+            
+            # Validate AST contains only allowed node types
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant, ast.Num, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod, ast.FloorDiv, ast.UAdd, ast.USub)):
+                    return "Error: Expression contains unsupported operations"
+            
+            # Safely evaluate
+            result = safe_eval(tree.body)
             return f"Result: {result}"
-        except Exception as e:
+        except SyntaxError as e:
+            return f"Error: Invalid syntax in expression"
+        except ValueError as e:
             return f"Error: {str(e)}"
+        except Exception as e:
+            return f"Error: Could not evaluate expression: {str(e)}"
     
     async def _file_operations_function(self, operation: str, path: str, content: str = "") -> str:
-        """File operations function"""
+        """File operations function - SECURITY: Path traversal protection"""
         try:
-            file_path = Path(path)
+            # SECURITY: Define allowed base directory to prevent path traversal
+            import os
+            ALLOWED_BASE_DIR = Path("/app/allowed_file_operations")
+            ALLOWED_BASE_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # Resolve path and check it's within allowed directory
+            try:
+                # Join with base directory
+                file_path = (ALLOWED_BASE_DIR / path).resolve()
+                
+                # Ensure resolved path is still within base directory (prevents ../ attacks)
+                base_resolved = ALLOWED_BASE_DIR.resolve()
+                if not str(file_path).startswith(str(base_resolved)):
+                    return "Error: Path traversal detected - access denied"
+                
+                # Additional security: check for parent directory components
+                if '..' in path or path.startswith('/'):
+                    return "Error: Invalid path - absolute paths and parent directory references not allowed"
+                    
+            except (OSError, ValueError) as e:
+                return f"Error: Invalid path: {str(e)}"
             
             if operation == "read":
-                if file_path.exists():
-                    with open(file_path, 'r') as f:
-                        return f"File content:\n{f.read()}"
+                # Security: Only allow reading files, not directories
+                if file_path.exists() and file_path.is_file():
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content_read = f.read()
+                            # Security: Limit file size to prevent memory exhaustion
+                            if len(content_read) > 1024 * 1024:  # 1MB limit
+                                return "Error: File too large (max 1MB)"
+                            return f"File content:\n{content_read}"
+                    except UnicodeDecodeError:
+                        return "Error: File is not a text file"
                 else:
-                    return "Error: File not found"
+                    return "Error: File not found or is a directory"
             
             elif operation == "write":
+                # Security: Limit content size
+                if len(content) > 1024 * 1024:  # 1MB limit
+                    return "Error: Content too large (max 1MB)"
+                
                 file_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(file_path, 'w') as f:
-                    f.write(content)
-                return f"File written successfully: {path}"
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    return f"File written successfully: {path}"
+                except OSError as e:
+                    return f"Error: Could not write file: {str(e)}"
             
             elif operation == "list":
+                # Security: Only list directories, not files
                 if file_path.exists() and file_path.is_dir():
-                    files = [f.name for f in file_path.iterdir()]
-                    return f"Directory contents:\n" + "\n".join(files)
+                    try:
+                        files = [f.name for f in file_path.iterdir() if f.name != '.' and f.name != '..']
+                        return f"Directory contents:\n" + "\n".join(files[:100])  # Limit to 100 items
+                    except PermissionError:
+                        return "Error: Permission denied"
                 else:
                     return "Error: Directory not found"
             
             else:
-                return "Error: Invalid operation"
+                return "Error: Invalid operation (allowed: read, write, list)"
                 
         except Exception as e:
+            logger.error(f"File operation error: {e}")
             return f"Error: {str(e)}"
     
     async def _web_search_function(self, query: str, max_results: int = 5) -> str:

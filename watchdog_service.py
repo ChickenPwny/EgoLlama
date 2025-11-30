@@ -184,11 +184,27 @@ class ServiceWatchdog:
             restart_log = f"/tmp/{service_name}_restart_{int(time.time())}.log"
             
             # Start new process
+            # SECURITY: Use shlex.split() to safely parse command without shell injection
+            import shlex
+            try:
+                # Parse command safely
+                if isinstance(config['command'], str):
+                    # Split command into list for safe execution
+                    command_parts = shlex.split(config['command'])
+                elif isinstance(config['command'], list):
+                    command_parts = config['command']
+                else:
+                    logger.error(f"Invalid command type: {type(config['command'])}")
+                    return False
+            except ValueError as e:
+                logger.error(f"Invalid command syntax: {e}")
+                return False
+            
             if config.get('working_dir'):
                 with open(restart_log, 'w') as log_file:
                     process = subprocess.Popen(
-                        config['command'],
-                        shell=True,
+                        command_parts,  # Use list instead of string
+                        shell=False,  # SECURITY: Disabled shell to prevent injection
                         cwd=config['working_dir'],
                         stdout=log_file,
                         stderr=subprocess.STDOUT,
@@ -197,8 +213,8 @@ class ServiceWatchdog:
             else:
                 with open(restart_log, 'w') as log_file:
                     process = subprocess.Popen(
-                        config['command'],
-                        shell=True,
+                        command_parts,  # Use list instead of string
+                        shell=False,  # SECURITY: Disabled shell to prevent injection
                         stdout=log_file,
                         stderr=subprocess.STDOUT,
                         preexec_fn=os.setsid if hasattr(os, 'setsid') else None

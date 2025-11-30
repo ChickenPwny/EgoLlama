@@ -140,13 +140,24 @@ from fastapi.security import APIKeyHeader
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def verify_api_key(x_api_key: str = Depends(api_key_header)):
-    """Verify API key for protected endpoints"""
-    if not REQUIRE_API_KEY:
-        # If not required, allow access without key
+    """Verify API key for protected endpoints - SECURITY: Fail-secure by default"""
+    # SECURITY: Check if we're in production mode
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    
+    # In development, allow access if API key is not required
+    if not REQUIRE_API_KEY and not is_production:
+        # Development mode: allow access without key if not required
         return True
     
+    # Production mode OR API key required: enforce authentication
     if not EGOLLAMA_API_KEY:
-        # No key configured, allow access
+        # SECURITY: In production or when required, fail if key not configured
+        if is_production or REQUIRE_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="API key authentication required but not configured. Set EGOLLAMA_API_KEY environment variable."
+            )
+        # Development mode fallback
         return True
     
     if not x_api_key:
@@ -193,6 +204,43 @@ class ContentTypeValidationMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(ContentTypeValidationMiddleware)
 logger.info("✅ Content-Type validation middleware enabled")
+
+# ============================================================================
+# SECURITY: GLOBAL EXCEPTION HANDLER (Prevent Information Disclosure)
+# ============================================================================
+
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler to prevent information disclosure"""
+    # Log full error details internally
+    logger.error(f"Unhandled exception in {request.url.path}: {exc}", exc_info=True)
+    
+    # SECURITY: Only show detailed errors in development mode
+    is_development = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    
+    if is_development:
+        # Development: show detailed error for debugging
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "detail": str(exc),
+                "path": str(request.url.path),
+                "traceback": traceback.format_exc().split('\n')[-10:]  # Last 10 lines only
+            }
+        )
+    else:
+        # Production: generic error message to prevent information disclosure
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "An internal error occurred",
+                "detail": "Please contact support if this problem persists"
+            }
+        )
 
 # Initialize database and Redis
 @app.on_event("startup")
@@ -323,7 +371,7 @@ async def api_status():
 
 @app.get("/api/performance/stats")
 @cached_response(ttl=5)
-async def performance_stats():
+async def performance_stats(_: bool = Depends(verify_api_key)):  # SECURITY: Require authentication for system stats
     """Get performance statistics"""
     cpu_usage = psutil.cpu_percent(interval=0.1)
     memory = psutil.virtual_memory()
@@ -441,15 +489,19 @@ async def chat_completions(request: ChatCompletionRequest, _: bool = Depends(ver
                             import torch
                             
                             # Load tokenizer
+                            # SECURITY: trust_remote_code disabled by default - only enable for verified internal models
+                            trust_code = os.getenv("EGOLLAMA_TRUST_REMOTE_CODE", "false").lower() == "true"
                             tokenizer = AutoTokenizer.from_pretrained(
                                 hf_model_id,
-                                trust_remote_code=True
+                                trust_remote_code=trust_code
                             )
                             
                             # Load model
+                            # SECURITY: trust_remote_code disabled by default - only enable for verified internal models
+                            trust_code = os.getenv("EGOLLAMA_TRUST_REMOTE_CODE", "false").lower() == "true"
                             model = AutoModelForCausalLM.from_pretrained(
                                 hf_model_id,
-                                trust_remote_code=True,
+                                trust_remote_code=trust_code,
                                 torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
                                 device_map="auto" if torch.cuda.is_available() else None
                             )
@@ -947,16 +999,20 @@ async def load_model(request: LoadModelRequest, _: bool = Depends(verify_api_key
             logger.info("📥 Loading with transformers (CPU/fallback)...")
             
             # Load tokenizer
+            # SECURITY: trust_remote_code disabled by default - only enable for verified internal models
+            trust_code = os.getenv("EGOLLAMA_TRUST_REMOTE_CODE", "false").lower() == "true"
             tokenizer = AutoTokenizer.from_pretrained(
                 model_to_load,
-                trust_remote_code=True,
+                trust_remote_code=trust_code,
                 local_files_only=local_path is not None
             )
             
             # Load model
+            # SECURITY: trust_remote_code disabled by default - only enable for verified internal models
+            trust_code = os.getenv("EGOLLAMA_TRUST_REMOTE_CODE", "false").lower() == "true"
             model = AutoModelForCausalLM.from_pretrained(
                 model_to_load,
-                trust_remote_code=True,
+                trust_remote_code=trust_code,
                 local_files_only=local_path is not None,
                 torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
                 device_map="auto" if torch.cuda.is_available() else None
@@ -1079,7 +1135,7 @@ async def list_preconfigured_ollama_models():
 async def pull_ollama_model(
     model_name: str = Body(..., embed=True),
     endpoint: Optional[str] = Body(None, embed=True),
-    _: bool = Depends(verify_api_key)
+    _: bool = Depends(verify_api_key)  # SECURITY: Require authentication for model pulling
 ):
     """Pull an Ollama model"""
     if not OLLAMA_AVAILABLE:
@@ -1140,7 +1196,7 @@ async def ollama_health():
 
 @app.get("/api/models")
 @cached_response(ttl=10)
-async def list_models():
+async def list_models(_: bool = Depends(verify_api_key)):  # SECURITY: Require authentication for model listing
     """List available models"""
     models = []
     
@@ -1211,7 +1267,7 @@ async def stats():
 
 if REDIS_AVAILABLE:
     @app.get("/api/cache/stats")
-    async def cache_stats():
+    async def cache_stats(_: bool = Depends(verify_api_key)):  # SECURITY: Require authentication for cache stats
         """Get Redis cache statistics"""
         return get_cache_stats()
     

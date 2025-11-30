@@ -25,7 +25,7 @@ services:
     container_name: egollama-redis
     command: redis-server --appendonly yes
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -59,6 +59,8 @@ services:
       # Gateway
       GATEWAY_HOST: 0.0.0.0
       GATEWAY_PORT: 8082
+      EGOLLAMA_HOST: 0.0.0.0
+      EGOLLAMA_PORT: 8082
       GATEWAY_WORKERS: ${GATEWAY_WORKERS:-4}
       GATEWAY_RELOAD: ${GATEWAY_RELOAD:-false}
       
@@ -69,8 +71,15 @@ services:
       ENABLE_POSTGRESQL: ${ENABLE_POSTGRESQL:-true}
       ENABLE_REDIS: ${ENABLE_REDIS:-true}
       ENABLE_GRACEFUL_DEGRADATION: ${ENABLE_GRACEFUL_DEGRADATION:-true}
+      
+      # Security Configuration
+      EGOLLAMA_API_KEY: ${EGOLLAMA_API_KEY:-}
+      EGOLLAMA_REQUIRE_API_KEY: ${EGOLLAMA_REQUIRE_API_KEY:-false}
+      EGOLLAMA_CORS_ORIGINS: ${EGOLLAMA_CORS_ORIGINS:-}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      EGOLLAMA_TRUST_REMOTE_CODE: ${EGOLLAMA_TRUST_REMOTE_CODE:-false}
     ports:
-      - "${GATEWAY_PORT:-8082}:8082"
+      - "${GATEWAY_PORT:-8083}:8082"
     depends_on:
       postgres:
         condition: service_healthy
